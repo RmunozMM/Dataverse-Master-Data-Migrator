@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B1E2C3D4-1111-4a2b-8c3d-000000000001}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>DataverseMasterDataMigrator.Core</RootNamespace>
+    <AssemblyName>DataverseMasterDataMigrator.Core</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <!-- Deliberadamente SIN referencias a Microsoft.Xrm.Sdk, System.Windows.Forms ni
+         XrmToolBox.Extensibility: ver ARCHITECTURE.md seccion 1. -->
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Permite compilar contra net48 en una maquina sin el Developer Pack de .NET Framework
+         instalado (solo dotnet SDK): NuGet trae los ensamblados de referencia en vez de
+         requerir una instalacion a nivel de sistema. No afecta builds donde el Developer Pack
+         si esta instalado (VS 2022 del usuario). -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <!-- Fase C del reporte de comparacion de esquema: exportador a Excel real (.xlsx).
+         Autorizado explicitamente por el usuario como nueva dependencia NuGet. -->
+    <PackageReference Include="ClosedXML" Version="0.102.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Newtonsoft.Json se resuelve como dependencia compartida ya presente en la raiz de
+         XrmToolBox\Plugins (ver ARCHITECTURE.md seccion 2). Aqui se referencia via HintPath a
+         una copia local solo para poder compilar el Core de forma aislada; en la subcarpeta de
+         distribucion del plugin NO se copia (Private=False), para no duplicar el ensamblado. -->
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\..\lib\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- ClosedXML (arriba, como PackageReference) SI se restaura correctamente via NuGet en este
+         entorno (dotnet CLI sin Visual Studio): el .dll queda en la cache global de NuGet, pero
+         "dotnet build" sobre un .csproj de formato clasico (no-SDK, como este) no tiene el mismo
+         cableado automatico que un proyecto SDK-style para convertir esos paquetes restaurados en
+         referencias de compilacion/copia local (eso requiere los targets de Microsoft.NET.Sdk, que
+         este proyecto deliberadamente no usa). Por eso, igual que Newtonsoft.Json arriba, se
+         referencia explicitamente via HintPath a la copia ya restaurada en la cache de NuGet del
+         usuario ($(NuGetPackageRoot), definido por el propio restore de NuGet). A diferencia de
+         Newtonsoft.Json, aqui SI se necesita Private=True (copiar local) porque ClosedXML y sus
+         dependencias no estan disponibles en ningun otro lado en tiempo de ejecucion. Las rutas y
+         versiones exactas de cada dependencia transitiva salen de
+         obj\DataverseMasterDataMigrator.Core.csproj.nuget.g.props y project.assets.json tras
+         "dotnet restore"; si se sube la version de ClosedXML hay que revisar y actualizar estas
+         rutas a mano. -->
+    <Reference Include="ClosedXML">
+      <HintPath>$(NuGetPackageRoot)closedxml\0.102.2\lib\netstandard2.0\ClosedXML.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="DocumentFormat.OpenXml">
+      <HintPath>$(NuGetPackageRoot)documentformat.openxml\2.16.0\lib\net46\DocumentFormat.OpenXml.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="ExcelNumberFormat">
+      <HintPath>$(NuGetPackageRoot)excelnumberformat\1.1.0\lib\net20\ExcelNumberFormat.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Irony">
+      <HintPath>$(NuGetPackageRoot)irony.netcore\1.0.11\lib\net461\Irony.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SixLabors.Fonts">
+      <HintPath>$(NuGetPackageRoot)sixlabors.fonts\1.0.0\lib\netstandard2.0\SixLabors.Fonts.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.IO.Packaging">
+      <HintPath>$(NuGetPackageRoot)system.io.packaging\6.0.0\lib\net461\System.IO.Packaging.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="XLParser">
+      <HintPath>$(NuGetPackageRoot)xlparser\1.5.2\lib\net461\XLParser.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <!-- Cuatro dependencias transitivas mas de ClosedXML (via SixLabors.Fonts y System.Memory),
+         no referenciadas directamente por el codigo pero requeridas en tiempo de ejecucion:
+         sin este HintPath explicito (misma razon que todo lo demas en este ItemGroup) el .dll
+         restaurado por NuGet nunca llega a bin\Release y el runtime falla con
+         FileNotFoundException al intentar cargar SixLabors.Fonts. IMPORTANTE ademas: hay un
+         desajuste real de version entre lo que SixLabors.Fonts.dll 1.0.0 referencia en su propio
+         manifest (System.Buffers 4.0.2.0, System.Numerics.Vectors 4.1.3.0) y lo que el grafo de
+         NuGet realmente restaura aqui (4.0.3.0 y 4.1.4.0 respectivamente, mas alto) - un binding
+         exacto de estos ensamblados de nombre fuerte fallaria igual con las versiones correctas
+         en el HintPath. Ver Plugin.cs (AssemblyResolveEventHandler / ForcedOwnDependencies) para
+         el "redirect" manual que compensa esto en tiempo de ejecucion (no hay app.config del
+         proceso host XrmToolBox.exe donde poner un bindingRedirect normal). -->
+    <Reference Include="System.Buffers">
+      <HintPath>$(NuGetPackageRoot)system.buffers\4.5.1\lib\net461\System.Buffers.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Memory">
+      <HintPath>$(NuGetPackageRoot)system.memory\4.5.4\lib\net461\System.Memory.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Numerics.Vectors">
+      <HintPath>$(NuGetPackageRoot)system.numerics.vectors\4.5.0\lib\net46\System.Numerics.Vectors.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe">
+      <HintPath>$(NuGetPackageRoot)system.runtime.compilerservices.unsafe\4.7.0\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Abstractions\IDataverseMetadataProvider.cs" />
+    <Compile Include="Abstractions\IDataverseRecordService.cs" />
+    <Compile Include="Abstractions\ExtensibilityPorts.cs" />
+    <Compile Include="Models\DataRecord.cs" />
+    <Compile Include="Models\MetadataSummaries.cs" />
+    <Compile Include="Models\MigrationProfile.cs" />
+    <Compile Include="Models\ExecutionManifest.cs" />
+    <Compile Include="Profiles\MigrationProfileSerializer.cs" />
+    <Compile Include="Profiles\MigrationProfileRepository.cs" />
+    <Compile Include="Planning\DependencyGraph.cs" />
+    <Compile Include="Planning\DependencyGraphBuilder.cs" />
+    <Compile Include="Planning\CycleDetector.cs" />
+    <Compile Include="Planning\TopologicalSorter.cs" />
+    <Compile Include="Planning\MigrationPlanner.cs" />
+    <Compile Include="Validation\PreflightResult.cs" />
+    <Compile Include="Validation\PreflightValidator.cs" />
+    <Compile Include="Validation\ExternalLookupSampler.cs" />
+    <Compile Include="Validation\MigrationPreviewBuilder.cs" />
+    <Compile Include="Comparison\SchemaComparisonModels.cs" />
+    <Compile Include="Comparison\SchemaComparisonBuilder.cs" />
+    <Compile Include="Comparison\SchemaComparisonHtmlExporter.cs" />
+    <Compile Include="Comparison\SchemaComparisonExcelExporter.cs" />
+    <Compile Include="Migration\AttributeWritabilityRules.cs" />
+    <Compile Include="Migration\RetryPolicy.cs" />
+    <Compile Include="Migration\WriteStrategySelector.cs" />
+    <Compile Include="Migration\ExecutionManifestStore.cs" />
+    <Compile Include="Migration\MigrationExecutor.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
