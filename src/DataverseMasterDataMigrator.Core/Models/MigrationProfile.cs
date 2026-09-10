@@ -33,6 +33,16 @@ namespace DataverseMasterDataMigrator.Core.Models
         public bool CreateManyToMany { get; set; } = true;
         public LookupPolicy RequiredLookupPolicy { get; set; } = LookupPolicy.FailPreflight;
         public LookupPolicy OptionalLookupPolicy { get; set; } = LookupPolicy.WarnAndContinue;
+
+        /// <summary>
+        /// Cuando viene seteado, el Pass 1 escribe explícitamente el atributo owner-lookup real de
+        /// cada tabla (ver AttributeSummary.IsOwnerLookup) apuntando a este SystemUser, en vez de
+        /// dejarlo fuera del payload como es el comportamiento por defecto (null). Mitigación de
+        /// último recurso para el caso real donde Target tiene automatización server-side que
+        /// intenta auto-asignar un owner de Origen inexistente en Target cuando ownerid llega vacío.
+        /// El migrador genérico nunca setea esto — solo lo usa Umayor Test Data Seeder.
+        /// </summary>
+        public Guid? OwnerIdOverride { get; set; }
     }
 
     public sealed class ProfileEntity

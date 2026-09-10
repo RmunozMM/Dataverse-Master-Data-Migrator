@@ -242,7 +242,7 @@ namespace DataverseMasterDataMigrator.Core.Migration
                         sourceRecords = await RemoveSkipSilentlyLookupsAsync(request, writableAttrs, sourceRecords, existenceCache, cancellationToken).ConfigureAwait(false);
 
                         var splits = sourceRecords.Select(source =>
-                            SplitForPass1(logicalName, stepOrder, orderByTable, writableAttrs, source, request.Transformer, sourceTable)).ToList();
+                            SplitForPass1(logicalName, stepOrder, orderByTable, writableAttrs, source, request.Transformer, sourceTable, request.Profile.Options.OwnerIdOverride)).ToList();
 
                         var batch = splits.Select(s => s.Write).ToList();
                         var results = await WriteWithRetryAsync(request, logicalName, batch, strategy, pass: 1, cancellationToken).ConfigureAwait(false);
@@ -430,7 +430,7 @@ namespace DataverseMasterDataMigrator.Core.Migration
 
                     foreach (var source in chunk)
                     {
-                        var split = SplitForPass1(step.LogicalName, step.Order, orderByTable, writableAttrs, source, request.Transformer, sourceTable);
+                        var split = SplitForPass1(step.LogicalName, step.Order, orderByTable, writableAttrs, source, request.Transformer, sourceTable, request.Profile.Options.OwnerIdOverride);
                         writeBatch.Add(split.Write);
                         chunkPending.Add(new PendingRecordState
                         {
@@ -748,7 +748,8 @@ namespace DataverseMasterDataMigrator.Core.Migration
             IReadOnlyList<AttributeSummary> writableAttrs,
             DataRecord source,
             IRecordTransformer transformer,
-            TableSummary sourceTable)
+            TableSummary sourceTable,
+            Guid? ownerIdOverride)
         {
             var write = new DataRecord(logicalName, source.Id);
             var deferred = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
@@ -787,6 +788,13 @@ namespace DataverseMasterDataMigrator.Core.Migration
                 }
 
                 write.Attributes[attr.LogicalName] = value;
+            }
+
+            if (ownerIdOverride.HasValue)
+            {
+                var ownerAttr = sourceTable.Attributes.FirstOrDefault(a => a.IsOwnerLookup);
+                if (ownerAttr != null)
+                    write.Attributes[ownerAttr.LogicalName] = new DataReference("systemuser", ownerIdOverride.Value);
             }
 
             return new SplitResult

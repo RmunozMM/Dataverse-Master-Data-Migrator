@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.6.6] — Agregado: `OwnerIdOverride` (mecanismo del Core, sin uso en el migrador genérico)
+
+### Agregado
+- `ProfileOptions.OwnerIdOverride` (`Guid?`, default `null`): cuando viene seteado, Pass 1 escribe
+  explícitamente el atributo owner-lookup real de cada tabla (`AttributeSummary.IsOwnerLookup`,
+  normalmente `ownerid`) apuntando a ese SystemUser, en vez de dejarlo fuera del payload como es
+  el comportamiento por defecto. Pensado como mitigación de último recurso para el caso real
+  (reportado desde **Umayor Test Data Seeder**, herramienta hermana que consume este mismo Core)
+  donde Target tiene automatización server-side que intenta auto-asignar un owner de Origen
+  inexistente cuando `ownerid` llega vacío en el Create, y el error resultante
+  (`Entity 'SystemUser' With Id = ... Does Not Exist`) no señala ningún campo que el migrador
+  controle directamente.
+- **El migrador genérico (este plugin) nunca setea este valor** — el default `null` preserva el
+  comportamiento actual (owner nunca escrito) sin cambios. Solo lo activa el consumidor Umayor
+  Test Data Seeder, seteándolo al SystemUser del usuario conectado a Target.
+
+### Interno
+- `AssemblyVersion`/`AssemblyFileVersion`: Core `0.2.2.0` → `0.2.3.0`; plugin XrmToolBox
+  `0.6.5.0` → `0.6.6.0` (bump de convención — el plugin en sí no cambió de comportamiento, pero
+  Core sí, y ambos plugins que lo consumen deben quedar en la misma versión de Core tras
+  reinstalar; ver lección de `Core.dll` sin versionar en `[0.6.1]`).
+
 ## [0.6.5] — Corregido: `ExistsAsync` abortaba toda la migración ante un tipo de entidad no consultable
 
 ### Corregido (crash real reportado por el usuario, usando SkipSilently contra su tenant real)

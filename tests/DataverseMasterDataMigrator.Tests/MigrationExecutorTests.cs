@@ -546,6 +546,89 @@ namespace DataverseMasterDataMigrator.Tests
         }
 
         [Fact]
+        public async Task OwnerIdOverride_Set_WritesOwnerLookupToOverrideSystemUser()
+        {
+            // Umayor.TestDataSeeder-only mitigation (ProfileOptions.OwnerIdOverride): when set,
+            // Pass 1 must explicitly write the table's real owner-lookup attribute (ownerid, here
+            // with LookupTargets systemuser/team so IsOwnerLookup is true) pointing at the given
+            // SystemUser, instead of leaving it out of the payload as the default (null) does.
+            var recordId = Guid.NewGuid();
+            var overrideOwnerId = Guid.NewGuid();
+            var sourceOwnerId = Guid.NewGuid(); // the Source-environment owner — must NOT survive the override.
+            var record = new DataRecord("wit_tema", recordId);
+            record.Attributes["name"] = "Tema A";
+            record.Attributes["ownerid"] = new DataReference("systemuser", sourceOwnerId);
+
+            var sourceData = new Dictionary<string, List<DataRecord>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["wit_tema"] = new List<DataRecord> { record }
+            };
+            var tables = new Dictionary<string, TableSummary>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["wit_tema"] = Table("wit_tema", Primitive("name"), Lookup("ownerid", "systemuser", "team"))
+            };
+            var profile = new MigrationProfile
+            {
+                Name = "Test",
+                Options = new ProfileOptions { OwnerIdOverride = overrideOwnerId },
+                Entities = { new ProfileEntity { LogicalName = "wit_tema" } }
+            };
+
+            var source = new FakeRecordService(sourceData);
+            var target = new FakeRecordService();
+            var request = BuildRequest(profile, tables, source, target);
+
+            var manifest = await new MigrationExecutor().ExecuteAsync(request, CancellationToken.None);
+
+            Assert.Equal(ExecutionStatus.Completed, manifest.Status);
+            Assert.Equal(1, manifest.Tables.Single().Created);
+            Assert.Equal(0, manifest.Tables.Single().Failed);
+            var writtenOwner = Assert.IsType<DataReference>(target.Written[("wit_tema", recordId)].Attributes["ownerid"]);
+            Assert.Equal("systemuser", writtenOwner.LogicalName);
+            Assert.Equal(overrideOwnerId, writtenOwner.Id);
+        }
+
+        [Fact]
+        public async Task OwnerIdOverride_NullByDefault_OwnerLookupStillNeverWritten()
+        {
+            // Confirms the generic migrator's unchanged default behavior: with OwnerIdOverride left
+            // null (its default — the generic DataverseMasterDataMigrator.XrmToolBox profile editor
+            // never sets it), the owner-lookup attribute must still never appear in the write
+            // payload at all, exactly like before this feature existed.
+            var recordId = Guid.NewGuid();
+            var sourceOwnerId = Guid.NewGuid();
+            var record = new DataRecord("wit_tema", recordId);
+            record.Attributes["name"] = "Tema A";
+            record.Attributes["ownerid"] = new DataReference("systemuser", sourceOwnerId);
+
+            var sourceData = new Dictionary<string, List<DataRecord>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["wit_tema"] = new List<DataRecord> { record }
+            };
+            var tables = new Dictionary<string, TableSummary>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["wit_tema"] = Table("wit_tema", Primitive("name"), Lookup("ownerid", "systemuser", "team"))
+            };
+            var profile = new MigrationProfile
+            {
+                Name = "Test",
+                // Options left as default: OwnerIdOverride == null.
+                Entities = { new ProfileEntity { LogicalName = "wit_tema" } }
+            };
+
+            Assert.Null(profile.Options.OwnerIdOverride);
+
+            var source = new FakeRecordService(sourceData);
+            var target = new FakeRecordService();
+            var request = BuildRequest(profile, tables, source, target);
+
+            var manifest = await new MigrationExecutor().ExecuteAsync(request, CancellationToken.None);
+
+            Assert.Equal(ExecutionStatus.Completed, manifest.Status);
+            Assert.False(target.Written[("wit_tema", recordId)].Attributes.ContainsKey("ownerid"));
+        }
+
+        [Fact]
         public async Task StateStatusRestoreInPass3_DoesNotDoubleCountCreated()
         {
             // Regression test for a real bug: Pass 3's statecode/statuscode restore reused
