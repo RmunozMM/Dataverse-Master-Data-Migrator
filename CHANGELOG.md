@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.5] — Corregido: `ExistsAsync` abortaba toda la migración ante un tipo de entidad no consultable
+
+### Corregido (crash real reportado por el usuario, usando SkipSilently contra su tenant real)
+- **`The 'Retrieve' method does not support entities of type 'attachment'`** abortaba la
+  migración COMPLETA (no solo un registro) apenas arrancaba Pass 1. Causa: `ExistsAsync` (usado
+  por `SkipSilently` para decidir si un lookup externo al perfil existe en Target) solo toleraba
+  el fault específico de Dataverse "el registro no existe" — cualquier OTRO fault, incluido "este
+  tipo de entidad no admite `Retrieve` en absoluto" (un tipo interno/restringido como
+  `attachment`, el almacenamiento binario real detrás de `activitymimeattachment`), se propagaba
+  sin capturar y tumbaba todo el proceso antes de escribir un solo registro.
+- **Fix**: `ExistsAsync` ahora trata CUALQUIER `FaultException<OrganizationServiceFault>` como
+  "no se puede confirmar/resolver este valor externo" (`false`) — exactamente lo que sus dos
+  únicos llamadores (`MigrationExecutor.RemoveSkipSilentlyLookupsAsync`,
+  `ExternalLookupSampler.SampleAsync`) ya hacían con un "no existe" genuino: omitir ese valor
+  puntual en vez de fallar. Ninguno de los dos necesita distinguir "genuinamente no existe" de
+  "no se pudo consultar" — fallar seguro (omitir el campo) es correcto en ambos casos. El chequeo
+  de existencia de `WriteBulkCreateThenUpdate` (decide create-vs-update, un contexto distinto)
+  NO se tocó — ahí sí importa distinguir "no existe todavía" de un error real.
+
+### Interno
+- `AssemblyVersion`/`AssemblyFileVersion` (plugin XrmToolBox): `0.6.4.0` → `0.6.5.0`. `Core.dll`
+  no cambió (el fix vive en `DataverseRecordServiceAdapter.cs`, proyecto `XrmToolBox`).
+
 ## [0.6.4] — Corregido: atributos válidos para escribir pero no para leer (`subscriptionid`)
 
 ### Corregido (crash real reportado por el usuario, primera vez que Migrar corrió contra el tenant real)

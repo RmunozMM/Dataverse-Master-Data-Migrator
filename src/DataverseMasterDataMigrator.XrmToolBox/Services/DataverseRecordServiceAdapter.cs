@@ -209,9 +209,21 @@ namespace DataverseMasterDataMigrator.XrmToolBox.Services
                 _service.Retrieve(reference.LogicalName, reference.Id, new ColumnSet(false));
                 return Task.FromResult(true);
             }
-            catch (System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault> ex)
-                when (IsNotFoundFault(ex))
+            catch (System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault>)
             {
+                // Bug real: un lookup externo al perfil puede apuntar a un tipo de entidad que
+                // Dataverse rechaza de plano para CUALQUIER Retrieve genérico (p. ej. "attachment"
+                // — "The 'Retrieve' method does not support entities of type 'attachment'", un
+                // tipo interno/restringido, no un simple "no encontrado"). Antes solo se toleraba
+                // el fault específico de "no existe" (IsNotFoundFault) — cualquier OTRO fault acá
+                // (incluido este) se propagaba sin capturar y abortaba la migración COMPLETA, no
+                // solo ese atributo puntual. Los dos únicos llamadores de ExistsAsync
+                // (RemoveSkipSilentlyLookupsAsync, ExternalLookupSampler) tratan "false" como
+                // "no se puede confirmar/resolver este valor externo" — exactamente el
+                // comportamiento correcto acá también: si ni siquiera se puede consultar el tipo
+                // de entidad, tratarlo como no resuelto (SkipSilently lo omite del payload) en vez
+                // de tumbar todo. Ya no se distingue "genuinamente no existe" de "no se pudo
+                // consultar" porque ningún llamador necesita esa distinción.
                 return Task.FromResult(false);
             }
         }
