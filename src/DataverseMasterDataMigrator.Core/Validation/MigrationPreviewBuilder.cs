@@ -82,11 +82,13 @@ namespace DataverseMasterDataMigrator.Core.Validation
             if (targetRecords == null) throw new ArgumentNullException(nameof(targetRecords));
 
             var results = new List<TableDataPreview>();
+            var orderedSteps = plan.Steps.OrderBy(s => s.Order).ToList();
 
-            foreach (var step in plan.Steps.OrderBy(s => s.Order))
+            for (int stepIndex = 0; stepIndex < orderedSteps.Count; stepIndex++)
             {
+                var step = orderedSteps[stepIndex];
                 cancellationToken.ThrowIfCancellationRequested();
-                onProgress?.Invoke($"Reading {step.LogicalName} from Source and Target...");
+                onProgress?.Invoke($"Reading {step.LogicalName} from Source and Target... ({stepIndex + 1}/{orderedSteps.Count})");
 
                 sourceTables.TryGetValue(step.LogicalName, out var table);
                 var nameAttribute = table?.PrimaryNameAttribute;
