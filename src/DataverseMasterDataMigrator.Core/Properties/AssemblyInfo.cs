@@ -14,8 +14,8 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 [assembly: Guid("c2a1f9e0-0000-4a2b-9c3d-000000000001")]
 
-[assembly: AssemblyVersion("0.1.0.0")]
-[assembly: AssemblyFileVersion("0.1.0.0")]
+[assembly: AssemblyVersion("0.2.0.0")]
+[assembly: AssemblyFileVersion("0.2.0.0")]
 
 // Permite que el proyecto de tests acceda a tipos internos si en el futuro se necesita marcar
 // algo como "internal" en vez de "public" sin perder cobertura de tests.

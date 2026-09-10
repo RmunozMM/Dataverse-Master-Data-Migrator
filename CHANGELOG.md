@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.6.1] — Corregido: `DataverseMasterDataMigrator.Core.dll` nunca había subido de versión
+
+### Corregido (bug real encontrado probando la tool hermana Umayor Test Data Seeder)
+- **`MissingMethodException` real al abrir un segundo plugin (Umayor Test Data Seeder, que
+  también referencia `DataverseMasterDataMigrator.Core.dll`) en el mismo XrmToolBox.** Causa
+  raíz: `DataverseMasterDataMigrator.Core`'s `AssemblyVersion` quedó fija en `0.1.0.0` desde
+  Fase 1 y NUNCA se subió, pese a cientos de cambios reales de código en 20+ versiones. Al haber
+  dos plugins distintos en el mismo proceso de XrmToolBox, cada uno con su propia copia de
+  `DataverseMasterDataMigrator.Core.dll` en su propia subcarpeta (el patrón de aislamiento ya
+  documentado), pero AMBAS copias declarando la MISMA identidad (`Version=0.1.0.0`) pese a tener
+  contenido distinto (una más nueva que la otra): el CLR trata ambas copias como intercambiables
+  y reutiliza la que se cargó primero para CUALQUIER solicitud posterior de esa misma identidad
+  — sin importar desde qué subcarpeta se pidió. El `AssemblyResolveEventHandler` de cada plugin
+  intenta filtrar por `RequestingAssembly`, pero ese valor puede llegar `null` en una resolución
+  disparada durante JIT profundo en la pila de llamadas, y en ese caso el handler del OTRO
+  plugin puede terminar resolviendo (incorrectamente) la petición, entregando una copia vieja.
+  El síntoma exacto: `Umayor.TestDataSeeder.dll` (compilado contra el `RetrieveFilteredPageAsync`/
+  `entityFilters` de la 0.6.0) recibía en tiempo real la copia de Core instalada por
+  `DataverseMasterDataMigrator` (más vieja, sin ese método) — `MissingMethodException` en
+  `MigrationPreviewBuilder.BuildAsync`.
+- **Fix**: `AssemblyVersion`/`AssemblyFileVersion` de `DataverseMasterDataMigrator.Core` sube por
+  primera vez, de `0.1.0.0` a `0.2.0.0`, y de ahora en más debe subir en cualquier cambio real de
+  Core — mismo principio ya aplicado al ensamblado del plugin (sección "caché de XrmToolBox por
+  `AssemblyQualifiedName`"), extendido a esta dependencia compartida. Verificado reinstalando
+  AMBOS plugins con el Core recompilado y comparando el hash MD5 de las dos copias instaladas
+  (idénticas tras el fix, antes NO lo eran — la del plugin original quedó desactualizada desde
+  antes del cambio de la 0.6.0 sin que nada lo detectara).
+- Lección para cualquier futura tool que reutilice este Core como librería compartida: un
+  ensamblado privado sin nombre fuerte (`AssemblyResolveEventHandler` manual, sin binding
+  redirects reales) que se distribuye con MÁS DE UN plugin en el mismo proceso necesita que su
+  propio `AssemblyVersion` refleje cambios reales — de lo contrario, dos copias con contenido
+  distinto pero la misma versión declarada son indistinguibles para el CLR, y "cuál gana" queda
+  librado al orden de carga, no al contenido real de cada archivo.
+
+### Interno
+- `AssemblyVersion`/`AssemblyFileVersion` (plugin XrmToolBox): `0.6.0.0` → `0.6.1.0` (para que la
+  caché de metadata de XrmToolBox note el cambio, aunque el único cambio real sea la versión de
+  Core que trae empaquetada).
+
 ## [0.6.0] — Lectura filtrada por registro (`RecordFilter`) en Core
 
 ### Agregado (base para una tool separada de extracción/anonimización por sujeto, a pedido explícito)
