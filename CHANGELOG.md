@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.2] — Contador de paso en el progreso de Preview Data
+
+### Agregado (encontrado usando la tool hermana Umayor Test Data Seeder)
+- `MigrationPreviewBuilder`'s `onProgress` ahora reporta "(i/N)" además del nombre de la tabla
+  ("Reading wit_colegio from Source and Target... (12/28)") — una corrida de Preview Data larga
+  contra un perfil con varias tablas grandes ya no se ve "pegada" sin ningún indicio de en qué
+  paso va. Mismo principio que `LoadEnabledTableMetadata` ya aplicaba a su propio progreso.
+- `AssemblyVersion` de `DataverseMasterDataMigrator.Core`: `0.2.0.0` → `0.2.1.0` (mismo motivo que
+  la entrada anterior — mantener sincronizadas las copias instaladas de Core entre los dos
+  plugins que lo comparten).
+
+### Interno
+- `AssemblyVersion`/`AssemblyFileVersion` (plugin XrmToolBox): `0.6.1.0` → `0.6.2.0`.
+
 ## [0.6.1] — Corregido: `DataverseMasterDataMigrator.Core.dll` nunca había subido de versión
 
 ### Corregido (bug real encontrado probando la tool hermana Umayor Test Data Seeder)
