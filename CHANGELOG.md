@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.7] — Agregado: `DeleteBatchAsync` (mecanismo del Core, sin uso en el migrador genérico)
+
+### Agregado
+- `IDataverseRecordService.DeleteBatchAsync(logicalName, ids, cancellationToken)`: borra un lote
+  de registros por id, idempotente (borrar un registro que ya no existe cuenta como éxito, no
+  como falla). Pensado para que **Umayor Test Data Seeder** (herramienta hermana que consume este
+  mismo Core) pueda limpiar el sujeto de Target entre corridas de prueba repetidas.
+- `RecordOperation.Delete` agregado al enum existente (`Create, Update, AssociateManyToMany,
+  RestoreStateStatus`).
+- **El migrador genérico (este plugin) nunca llama este método** — solo lo implementa para
+  cumplir la interfaz compartida. Ningún flujo de su UI cambia.
+
+### Interno
+- `AssemblyVersion`/`AssemblyFileVersion`: Core `0.2.3.0` → `0.2.4.0`; plugin XrmToolBox
+  `0.6.6.0` → `0.6.7.0` (bump de convención — Core cambió, ambos plugins que lo consumen deben
+  reinstalarse juntos; verificado vía MD5 idéntico de Core.dll instalado en ambos).
+
 ## [0.6.6] — Agregado: `OwnerIdOverride` (mecanismo del Core, sin uso en el migrador genérico)
 
 ### Agregado

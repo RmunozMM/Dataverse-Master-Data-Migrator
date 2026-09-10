@@ -292,6 +292,80 @@ namespace DataverseMasterDataMigrator.XrmToolBox.Services
             return Task.CompletedTask;
         }
 
+        public Task<IReadOnlyList<RecordOperationResult>> DeleteBatchAsync(
+            string logicalName,
+            IReadOnlyList<Guid> ids,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (ids == null || ids.Count == 0)
+                return Task.FromResult<IReadOnlyList<RecordOperationResult>>(new List<RecordOperationResult>());
+
+            var requestCollection = new OrganizationRequestCollection();
+            foreach (var id in ids)
+            {
+                requestCollection.Add(new DeleteRequest { Target = new EntityReference(logicalName, id) });
+            }
+
+            var executeMultiple = new ExecuteMultipleRequest
+            {
+                Settings = new ExecuteMultipleSettings { ContinueOnError = true, ReturnResponses = true },
+                Requests = requestCollection
+            };
+
+            var response = (ExecuteMultipleResponse)_service.Execute(executeMultiple);
+            var results = new List<RecordOperationResult>();
+
+            for (int i = 0; i < ids.Count; i++)
+            {
+                var id = ids[i];
+                var itemResponse = response.Responses.FirstOrDefault(r => r.RequestIndex == i);
+
+                if (itemResponse?.Fault != null)
+                {
+                    // Idempotencia: borrar un registro que ya no existe cuenta como éxito — el
+                    // objetivo ("este registro no está en Target") ya se cumple, igual criterio
+                    // que WriteBulkCreateThenUpdate usa para decidir create-vs-update.
+                    if (IsNotFoundFault(itemResponse.Fault))
+                    {
+                        results.Add(new RecordOperationResult
+                        {
+                            RecordId = id,
+                            TableLogicalName = logicalName,
+                            Operation = RecordOperation.Delete,
+                            Outcome = RecordOutcome.Succeeded
+                        });
+                        continue;
+                    }
+
+                    ClassifyFault(itemResponse.Fault, out var isTransient, out var retryAfter);
+                    results.Add(new RecordOperationResult
+                    {
+                        RecordId = id,
+                        TableLogicalName = logicalName,
+                        Operation = RecordOperation.Delete,
+                        Outcome = RecordOutcome.Failed,
+                        ErrorMessage = itemResponse.Fault.Message,
+                        IsTransient = isTransient,
+                        RetryAfterHint = retryAfter
+                    });
+                }
+                else
+                {
+                    results.Add(new RecordOperationResult
+                    {
+                        RecordId = id,
+                        TableLogicalName = logicalName,
+                        Operation = RecordOperation.Delete,
+                        Outcome = RecordOutcome.Succeeded
+                    });
+                }
+            }
+
+            return Task.FromResult<IReadOnlyList<RecordOperationResult>>(results);
+        }
+
         // ---- helpers -------------------------------------------------------------------
 
         private List<RecordOperationResult> WriteBulkCreateThenUpdate(string logicalName, IReadOnlyList<DataRecord> batch, int pass)
@@ -545,9 +619,14 @@ namespace DataverseMasterDataMigrator.XrmToolBox.Services
 
         private static bool IsNotFoundFault(System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault> ex)
         {
+            return IsNotFoundFault(ex.Detail);
+        }
+
+        private static bool IsNotFoundFault(Microsoft.Xrm.Sdk.OrganizationServiceFault fault)
+        {
             // Error code 0x80040217 (-2147220969) is Dataverse's "record does not exist".
             // Matching by ErrorCode rather than message text since messages are localized.
-            return ex.Detail?.ErrorCode == unchecked((int)0x80040217);
+            return fault?.ErrorCode == unchecked((int)0x80040217);
         }
 
         private static bool IsDuplicateAssociationFault(System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault> ex)

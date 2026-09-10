@@ -18,7 +18,8 @@ namespace DataverseMasterDataMigrator.Core.Models
         Create,
         Update,
         AssociateManyToMany,
-        RestoreStateStatus
+        RestoreStateStatus,
+        Delete
     }
 
     public enum RecordOutcome

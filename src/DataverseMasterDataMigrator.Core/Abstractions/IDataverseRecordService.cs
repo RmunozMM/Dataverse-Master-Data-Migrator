@@ -76,5 +76,18 @@ namespace DataverseMasterDataMigrator.Core.Abstractions
             DataReference from,
             IReadOnlyList<DataReference> to,
             CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Elimina un lote de registros por id. Usado por herramientas de limpieza de datos de
+        /// prueba (Umayor Test Data Seeder) para dejar Target en un estado limpio entre corridas —
+        /// el migrador genérico no lo invoca hoy, pero cualquier implementador del puerto debe
+        /// soportarlo. Debe ser idempotente: intentar borrar un registro que ya no existe cuenta
+        /// como éxito (Outcome=Succeeded), no como falla — el objetivo ("este registro no está en
+        /// Target") ya se cumple.
+        /// </summary>
+        Task<IReadOnlyList<Models.RecordOperationResult>> DeleteBatchAsync(
+            string logicalName,
+            IReadOnlyList<Guid> ids,
+            CancellationToken cancellationToken);
     }
 }

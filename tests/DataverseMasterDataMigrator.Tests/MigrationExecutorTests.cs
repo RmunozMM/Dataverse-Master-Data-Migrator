@@ -161,6 +161,9 @@ namespace DataverseMasterDataMigrator.Tests
                 return Task.CompletedTask;
             }
 
+            public Task<IReadOnlyList<RecordOperationResult>> DeleteBatchAsync(string logicalName, IReadOnlyList<Guid> ids, CancellationToken cancellationToken)
+                => throw new NotSupportedException("FakeRecordService no soporta DeleteBatchAsync (ningún test de MigrationExecutor lo necesita).");
+
             private static bool MatchesFilter(DataRecord record, RecordFilter filter)
             {
                 if (filter == null || ((filter.Conditions?.Count ?? 0) == 0 && (filter.SubFilters?.Count ?? 0) == 0))

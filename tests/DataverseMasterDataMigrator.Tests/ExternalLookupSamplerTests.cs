@@ -55,6 +55,7 @@ namespace DataverseMasterDataMigrator.Tests
             public Task<IReadOnlyList<RecordOperationResult>> WriteBatchAsync(string logicalName, IReadOnlyList<DataRecord> batch, WriteStrategy strategy, int pass, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task AssociateAsync(string relationshipSchemaName, DataReference from, IReadOnlyList<DataReference> to, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task<IReadOnlyList<DataRecord>> RetrieveByIdsAsync(string logicalName, IReadOnlyList<Guid> ids, IReadOnlyList<string> columns, CancellationToken cancellationToken) => throw new NotSupportedException();
+            public Task<IReadOnlyList<RecordOperationResult>> DeleteBatchAsync(string logicalName, IReadOnlyList<Guid> ids, CancellationToken cancellationToken) => throw new NotSupportedException();
 
             private static bool MatchesFilter(DataRecord record, RecordFilter filter)
             {
@@ -103,6 +104,7 @@ namespace DataverseMasterDataMigrator.Tests
             public Task<IReadOnlyList<RecordOperationResult>> WriteBatchAsync(string logicalName, IReadOnlyList<DataRecord> batch, WriteStrategy strategy, int pass, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task AssociateAsync(string relationshipSchemaName, DataReference from, IReadOnlyList<DataReference> to, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task<IReadOnlyList<DataRecord>> RetrieveByIdsAsync(string logicalName, IReadOnlyList<Guid> ids, IReadOnlyList<string> columns, CancellationToken cancellationToken) => throw new NotSupportedException();
+            public Task<IReadOnlyList<RecordOperationResult>> DeleteBatchAsync(string logicalName, IReadOnlyList<Guid> ids, CancellationToken cancellationToken) => throw new NotSupportedException();
         }
 
         [Fact]
