@@ -32,9 +32,36 @@ namespace DataverseMasterDataMigrator.XrmToolBox.Services
         private const int DefaultPageSize = 500;
         private readonly IOrganizationService _service;
 
+        // Real bug found live: "<logicalname>id" is NOT always the primary key attribute — every
+        // Activity-derived entity (email, phonecall, activitypointer, and any custom Activity-type
+        // table like wit_evento/wit_actividadchat) shares "activityid" as its real primary key
+        // instead. RetrieveByIdsAsync used to assume the naming convention and crashed against
+        // Dataverse ("... doesn't contain attribute with Name = 'activitypointerid'...") the first
+        // time it was ever called against one of these tables. Resolved via a real (cached, so
+        // only one round trip per table) metadata lookup instead of guessing.
+        private readonly Dictionary<string, string> _primaryIdAttributeCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         public DataverseRecordServiceAdapter(IOrganizationService service)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
+        }
+
+        private string GetPrimaryIdAttribute(string logicalName)
+        {
+            if (_primaryIdAttributeCache.TryGetValue(logicalName, out var cached))
+                return cached;
+
+            var request = new Microsoft.Xrm.Sdk.Messages.RetrieveEntityRequest
+            {
+                LogicalName = logicalName,
+                EntityFilters = Microsoft.Xrm.Sdk.Metadata.EntityFilters.Entity,
+                RetrieveAsIfPublished = true
+            };
+            var response = (Microsoft.Xrm.Sdk.Messages.RetrieveEntityResponse)_service.Execute(request);
+            var primaryIdAttribute = response.EntityMetadata.PrimaryIdAttribute;
+
+            _primaryIdAttributeCache[logicalName] = primaryIdAttribute;
+            return primaryIdAttribute;
         }
 
         public Task<RecordPage> RetrievePageAsync(
@@ -147,10 +174,7 @@ namespace DataverseMasterDataMigrator.XrmToolBox.Services
             if (ids == null || ids.Count == 0)
                 return Task.FromResult<IReadOnlyList<DataRecord>>(Array.Empty<DataRecord>());
 
-            // Every Dataverse entity's primary key attribute is, by platform convention, always
-            // "<logicalname>id" — never configurable, even for custom entities — so this doesn't
-            // need a metadata round trip to look up.
-            var primaryIdAttribute = logicalName + "id";
+            var primaryIdAttribute = GetPrimaryIdAttribute(logicalName);
             var results = new List<DataRecord>(ids.Count);
 
             // ConditionOperator.In has practical limits on very large lists; 500 keeps each

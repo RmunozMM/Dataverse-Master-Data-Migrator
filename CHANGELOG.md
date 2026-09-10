@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.6.3] — Corregido: `RetrieveByIdsAsync` asumía mal la primary key de tablas tipo Activity
+
+### Corregido (crash real reportado por el usuario contra su tenant real)
+- **`'ActivityPointer' entity doesn't contain attribute with Name = 'activitypointerid'`** al
+  usar la tool hermana Umayor Test Data Seeder. Causa: `DataverseRecordServiceAdapter.RetrieveByIdsAsync`
+  asumía que la primary key de CUALQUIER tabla es siempre `<logicalname>id` — cierto para la
+  mayoría, pero FALSO para toda entidad de tipo Activity en Dataverse (`email`, `phonecall`,
+  `activitypointer`, y cualquier tabla custom de tipo Activity como `wit_evento`/`wit_actividadchat`),
+  cuya primary key real es siempre `activityid`. El comentario que documentaba esa suposición
+  ("por convención de plataforma, siempre...") era incorrecto — nunca se había verificado contra
+  una tabla Activity real hasta ahora.
+- **Fix**: `RetrieveByIdsAsync` ahora resuelve la primary key real vía una consulta de metadata
+  liviana (`RetrieveEntityRequest` con solo `EntityFilters.Entity`, sin atributos ni relaciones),
+  cacheada por tabla para no repetir la consulta. Afecta tanto a este plugin (Retry Failed y el
+  chequeo de existencia de Preview Data) como a cualquier consumidor futuro del mismo adaptador.
+  Vive en `DataverseRecordServiceAdapter.cs` (proyecto `XrmToolBox`, no `Core`) — Umayor Test
+  Data Seeder tiene su propia copia vendored de este mismo archivo (mismo patrón que las DLL de
+  `lib/`, no se comparte vía `ProjectReference`) y se corrigió ahí también, por separado.
+- Este plugin en sí no expone tablas Activity-type en ningún perfil de ejemplo probado hasta
+  ahora, así que el bug estaba latente sin manifestarse — recién se disparó al usarlo desde
+  Umayor Test Data Seeder, cuyo mapa de relaciones sí incluye varias.
+
+### Interno
+- `AssemblyVersion`/`AssemblyFileVersion` (plugin XrmToolBox): `0.6.2.0` → `0.6.3.0`. `Core.dll`
+  no cambió en esta versión (el fix vive en el proyecto `XrmToolBox`), así que no hace falta
+  reinstalarlo — solo se sube la versión del plugin, por convención (su propio DLL sí cambió).
+
 ## [0.6.2] — Contador de paso en el progreso de Preview Data
 
 ### Agregado (encontrado usando la tool hermana Umayor Test Data Seeder)
