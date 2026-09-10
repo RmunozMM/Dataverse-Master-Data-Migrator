@@ -28,6 +28,20 @@ namespace DataverseMasterDataMigrator.Core.Abstractions
             CancellationToken cancellationToken);
 
         /// <summary>
+        /// Igual que <see cref="RetrievePageAsync"/> pero acotado por <paramref name="filter"/> —
+        /// usado cuando <c>ProfileEntity.Filter</c> está seteado. <paramref name="filter"/> puede
+        /// ser <c>null</c>, en cuyo caso el comportamiento debe ser idéntico a
+        /// <see cref="RetrievePageAsync"/>.
+        /// </summary>
+        Task<RecordPage> RetrieveFilteredPageAsync(
+            string logicalName,
+            IReadOnlyList<string> columns,
+            RecordFilter filter,
+            string pageToken,
+            int pageSize,
+            CancellationToken cancellationToken);
+
+        /// <summary>
         /// Targeted read of specific records by id — used by Retry Failed (ARCHITECTURE.md
         /// sección 7) so it can re-fetch just the previously-failed records from Source without
         /// re-paging tables that already completed successfully. Records that no longer exist are

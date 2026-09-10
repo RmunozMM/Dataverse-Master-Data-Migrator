@@ -1,5 +1,92 @@
 # Changelog
 
+## [0.6.0] — Lectura filtrada por registro (`RecordFilter`) en Core
+
+### Agregado (base para una tool separada de extracción/anonimización por sujeto, a pedido explícito)
+- **Nuevo `IDataverseRecordService.RetrieveFilteredPageAsync`**: igual que `RetrievePageAsync`
+  pero acotado por un `RecordFilter` opcional (`Core/Models/RecordFilter.cs` — condiciones
+  `Equal`/`NotEqual`/`In` sobre atributos, combinables con `And`/`Or`, con anidamiento
+  arbitrario vía `SubFilters`). `RetrievePageAsync` ahora delega a este método con `filter: null`,
+  así que su comportamiento no cambió en absoluto.
+- **`ProfileEntity.Filter` (existía desde Fase 1 como `string` sin ningún uso real — un
+  placeholder muerto) ahora es un `RecordFilter` real, y de verdad se respeta** en los tres
+  lugares que leen registros de una tabla del perfil: `MigrationExecutor` (Pass 1, Execute y
+  Retry Failed), `ExternalLookupSampler` (muestreo de Preflight) y `MigrationPreviewBuilder`
+  (Preview Data — nuevo parámetro opcional `entityFilters`, wireado desde `PluginControl.OnPreviewData`).
+  Regla de oro verificada explícitamente: `Filter == null` (el único caso que existe hoy, ningún
+  perfil real usa el campo todavía) se comporta exactamente igual que antes de este cambio en
+  los tres call sites — ningún perfil existente cambia de conducta.
+- Motivación real: una tool separada para Umayor (extraer el grafo de registros de un RUT
+  puntual desde Producción, anonimizarlo y migrarlo a un entorno bajo para tener datos de prueba
+  reales) necesita esta misma capacidad de lectura acotada. En vez de duplicarla en un fork, se
+  agregó al Core compartido — la tool nueva reutilizará `RetrieveFilteredPageAsync` (a través de
+  una futura implementación real de `IRecordSelector`, ver `Abstractions/ExtensibilityPorts.cs`)
+  en vez de reinventar su propio mecanismo de consulta. Esta versión NO incluye esa tool ni
+  ningún control de UI nuevo para editar `filter` desde el plugin — es solo la capacidad de Core.
+- Documentado en `docs/MIGRATION_PROFILES.md` (forma real del JSON de `filter`) y
+  `Abstractions/ExtensibilityPorts.cs` (`IRecordSelector`, referencia al nuevo método).
+- 3 tests nuevos (uno por call site) confirman que un `Filter` seteado realmente acota qué
+  registros se migran/muestrean/previsualizan — sin tocar ninguno de los ~105 tests existentes.
+
+### Corregido (encontrado en revisión, antes de llegar a producción)
+- El primer borrador de la traducción de `FilterOperator.In` (tanto en el adaptador real como en
+  los fakes de test) trataba cualquier `IEnumerable` como una lista de valores candidatos — pero
+  un `string` también implementa `IEnumerable<char>`, así que un valor `In` con un único string
+  se habría troceado en caracteres individuales en vez de tratarse como un solo candidato.
+  Corregido excluyendo `string` explícitamente antes de intentar enumerar.
+- `PluginControl.OnPreviewData`: el primer wireo de `entityFilters` reusaba `e` como nombre de
+  variable de lambda dentro de un event handler `(object sender, EventArgs e)` — no compilaba
+  (`CS0136`, nombre ya usado en el ámbito envolvente). Corregido renombrando la variable.
+
+### Interno
+- `AssemblyVersion`/`AssemblyFileVersion` (plugin XrmToolBox): `0.5.4.0` → `0.6.0.0`.
+- `DataverseMasterDataMigrator.Core.csproj` ganó `<Compile Include="Models\RecordFilter.cs" />`
+  (proyecto de formato clásico, sin glob automático de archivos nuevos).
+
+## [0.5.4] — Descripción del About más concreta sobre qué hace la app
+
+### Cambiado (feedback de uso real — la descripción anterior no explicaba qué hace la app)
+- El párrafo de descripción del diálogo About pasó de una frase genérica ("perfiles reutilizables
+  y persistentes, en vez de migraciones manuales tabla por tabla") a nombrar las capacidades
+  concretas: validación de dependencias y lookups (Preflight), comparación de estructura
+  Source/Target, previsualización de cambios y ejecución multipass con reintento de fallos.
+  `ClientSize` del diálogo subido de 380 a 400px de alto para darle espacio al texto más largo
+  (verificado sin abrir ninguna ventana visible: instanciando el `Form` real y forzando `Handle`
+  sin `Show()`/`ShowDialog()` — ningún control se solapa con el botón "Cerrar").
+
+### Interno
+- `AssemblyVersion`/`AssemblyFileVersion`: `0.5.3.0` → `0.5.4.0`.
+
+## [0.5.3] — Diálogo About al estilo de Metadata Dataverse Document
+
+### Cambiado (a pedido explícito, con captura de referencia del plugin hermano)
+- El diálogo "About" ahora sigue el mismo estilo que el de Metadata Dataverse Document: link
+  real "Enlace al repositorio" en el propio encabezado (apuntando a
+  https://github.com/RmunozMM/Dataverse-Master-Data-Migrator, ya público), descripción y
+  etiquetas de contacto en español ("Desarrollador:", "Sitio Web:", "Contacto:"), copyright en
+  negrita con el año antes del nombre ("Copyright © {año} Rogelio Muñoz. Todos los derechos
+  reservados."), y botón "Cerrar". Reemplaza el placeholder anterior "Repository: coming soon"
+  — el repositorio ya está publicado, ya no aplicaba. El título de la ventana se dejó igual en
+  inglés, tal como en la referencia.
+- Ajuste menor de robustez encontrado en revisión (no afecta nada visible hoy): el
+  `FlowLayoutPanel` del encabezado que agrupa versión + link ahora usa
+  `AutoSizeMode.GrowAndShrink` en vez del `GrowOnly` por default, para que su `Bounds` real
+  coincida con el contenido — verificado sin abrir ninguna ventana visible, instanciando el
+  `Form` real y forzando `Handle` sin `Show()`/`ShowDialog()`.
+
+### Interno
+- `AssemblyVersion`/`AssemblyFileVersion`: `0.5.2.0` → `0.5.3.0`.
+
+## [0.5.2] — Botón "Clear Log"
+
+### Agregado (feedback de uso real)
+- Nuevo botón "Clear Log" en la pestaña Migration, junto a "View Log": vacía el `TextBox` del
+  log de la sesión actual. No afecta ninguna operación en curso ni el `ExecutionManifest`
+  persistido — solo limpia lo mostrado en pantalla.
+
+### Interno
+- `AssemblyVersion`/`AssemblyFileVersion`: `0.5.1.0` → `0.5.2.0`.
+
 ## [0.5.1] — SkipSilently real para lookups opcionales no resueltos
 
 ### Agregado (funcionalidad pendiente desde hacía dos versiones, implementada a pedido explícito)

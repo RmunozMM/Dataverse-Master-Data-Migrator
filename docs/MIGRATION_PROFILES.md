@@ -85,9 +85,45 @@ UTF-8 sin BOM, JSON indentado (legible), `\n` como salto de línea.
 | `displayName` | string | sí | Copia de la metadata al momento de crear/editar el perfil, solo para mostrarla en la UI sin re-consultar metadata. No es la fuente de verdad — el Preflight siempre revalida contra la metadata real de Source/Target. |
 | `enabled` | bool | sí | Permite dejar una tabla en el perfil pero excluirla temporalmente de la ejecución sin borrarla de la definición. |
 | `preferredOrder` | int | sí | Desempate cuando el orden real de dependencias no obliga una secuencia (ver `ARCHITECTURE.md` sección 4). No es el orden de ejecución definitivo. |
-| `filter` | string o `null` | no | Reservado para FetchXML/filtro por tabla (sección 10 del requerimiento: "dejar preparado el modelo"). `null` en V1 siempre significa "todos los registros". |
+| `filter` | objeto `RecordFilter` o `null` | no | Acota qué registros de Source entran en el alcance de Preflight/Preview Data/Execute para esta tabla — ver "El campo `filter`" abajo. `null` (el default, y lo único que genera la UI hoy) significa "todos los registros", el comportamiento de siempre. |
 | `attributeMode` | enum string: `AllWritable` | sí | Único valor soportado en V1. El esquema admite el string para no romper si se agrega `Custom` (lista explícita) más adelante. |
 | `excludedAttributes` | array de string | no (default `[]`) | Nombres lógicos de atributos a excluir explícitamente aunque sean escribibles. |
+
+## El campo `filter`
+
+Modelo (`Core/Models/RecordFilter.cs`), pensado para que un selector de registros pueda acotar
+una tabla a un subconjunto puntual (p. ej. "solo lo relacionado a un contacto") sin necesitar un
+mensaje bulk especial — se traduce a un `FilterExpression`/`ConditionExpression` real de la SDK:
+
+```json
+{
+  "logicalName": "incident",
+  "filter": {
+    "logicalOperator": "Or",
+    "conditions": [
+      { "attributeName": "customerid", "operator": "Equal", "value": "6f174752-d79f-f111-b8de-002248e09a6b" },
+      { "attributeName": "primarycontactid", "operator": "Equal", "value": "6f174752-d79f-f111-b8de-002248e09a6b" }
+    ],
+    "subFilters": []
+  }
+}
+```
+
+| Campo (`RecordFilter`) | Tipo | Notas |
+|---|---|---|
+| `logicalOperator` | enum: `And`, `Or` | Cómo se combinan `conditions` + `subFilters` entre sí. |
+| `conditions` | array de `FilterCondition` | Ver abajo. |
+| `subFilters` | array de `RecordFilter` | Anidamiento para árboles booleanos arbitrarios — p. ej. `(A = x OR B = x) AND C != y`. Vacío en V1: ningún llamador real lo genera todavía. |
+
+| Campo (`FilterCondition`) | Tipo | Notas |
+|---|---|---|
+| `attributeName` | string | Nombre lógico del atributo. |
+| `operator` | enum: `Equal`, `NotEqual`, `In` | `In` espera `value` como array; un valor suelto se trata como un único candidato (un `string` nunca se trocea en caracteres, aunque técnicamente sea enumerable). |
+| `value` | cualquier valor JSON | Se compara tal cual contra el valor real del registro. Un GUID viaja como string JSON — quien construya el filtro en código debe pasar el `Guid`/tipo real, no asumir que el round-trip JSON⇄objeto preserva el tipo exacto. |
+
+Ningún flujo de la UI de esta versión escribe `filter` todavía (siempre queda `null` al guardar un
+perfil desde Profiles/Tables) — es una capacidad de Core activada para un consumidor futuro, no
+una funcionalidad expuesta hoy.
 
 ## Validación de archivos corruptos
 

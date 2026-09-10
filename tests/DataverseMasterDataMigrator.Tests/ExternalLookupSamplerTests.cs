@@ -41,9 +41,13 @@ namespace DataverseMasterDataMigrator.Tests
             public FakeSourceService(Dictionary<string, List<DataRecord>> data) => _data = data;
 
             public Task<RecordPage> RetrievePageAsync(string logicalName, IReadOnlyList<string> columns, string pageToken, int pageSize, CancellationToken cancellationToken)
+                => RetrieveFilteredPageAsync(logicalName, columns, null, pageToken, pageSize, cancellationToken);
+
+            public Task<RecordPage> RetrieveFilteredPageAsync(string logicalName, IReadOnlyList<string> columns, RecordFilter filter, string pageToken, int pageSize, CancellationToken cancellationToken)
             {
                 _data.TryGetValue(logicalName, out var list);
-                return Task.FromResult(new RecordPage { Records = list ?? new List<DataRecord>(), HasMore = false, NextPageToken = null });
+                var filtered = (list ?? new List<DataRecord>()).Where(r => MatchesFilter(r, filter)).ToList();
+                return Task.FromResult(new RecordPage { Records = filtered, HasMore = false, NextPageToken = null });
             }
 
             public Task<bool> ExistsAsync(DataReference reference, CancellationToken cancellationToken) => throw new NotSupportedException();
@@ -51,6 +55,33 @@ namespace DataverseMasterDataMigrator.Tests
             public Task<IReadOnlyList<RecordOperationResult>> WriteBatchAsync(string logicalName, IReadOnlyList<DataRecord> batch, WriteStrategy strategy, int pass, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task AssociateAsync(string relationshipSchemaName, DataReference from, IReadOnlyList<DataReference> to, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task<IReadOnlyList<DataRecord>> RetrieveByIdsAsync(string logicalName, IReadOnlyList<Guid> ids, IReadOnlyList<string> columns, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+            private static bool MatchesFilter(DataRecord record, RecordFilter filter)
+            {
+                if (filter == null || ((filter.Conditions?.Count ?? 0) == 0 && (filter.SubFilters?.Count ?? 0) == 0))
+                    return true;
+
+                bool EvaluateCondition(FilterCondition c)
+                {
+                    record.Attributes.TryGetValue(c.AttributeName, out var actual);
+                    if (c.Operator == FilterOperator.In)
+                    {
+                        var values = (c.Value is string || !(c.Value is System.Collections.IEnumerable enumerable))
+                            ? new[] { c.Value }
+                            : enumerable.Cast<object>();
+                        return values.Any(v => Equals(actual, v));
+                    }
+                    var matches = Equals(actual, c.Value);
+                    return c.Operator == FilterOperator.NotEqual ? !matches : matches;
+                }
+
+                var results = (filter.Conditions ?? new List<FilterCondition>()).Select(EvaluateCondition)
+                    .Concat((filter.SubFilters ?? new List<RecordFilter>()).Select(sf => MatchesFilter(record, sf)))
+                    .ToList();
+
+                if (results.Count == 0) return true;
+                return filter.LogicalOperator == FilterLogicalOperator.Or ? results.Any(x => x) : results.All(x => x);
+            }
         }
 
         private sealed class FakeTargetExistence : IDataverseRecordService
@@ -67,6 +98,7 @@ namespace DataverseMasterDataMigrator.Tests
             }
 
             public Task<RecordPage> RetrievePageAsync(string logicalName, IReadOnlyList<string> columns, string pageToken, int pageSize, CancellationToken cancellationToken) => throw new NotSupportedException();
+            public Task<RecordPage> RetrieveFilteredPageAsync(string logicalName, IReadOnlyList<string> columns, RecordFilter filter, string pageToken, int pageSize, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task<int> GetApproximateCountAsync(string logicalName, CancellationToken cancellationToken) => Task.FromResult(0);
             public Task<IReadOnlyList<RecordOperationResult>> WriteBatchAsync(string logicalName, IReadOnlyList<DataRecord> batch, WriteStrategy strategy, int pass, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task AssociateAsync(string relationshipSchemaName, DataReference from, IReadOnlyList<DataReference> to, CancellationToken cancellationToken) => throw new NotSupportedException();
@@ -398,6 +430,53 @@ namespace DataverseMasterDataMigrator.Tests
             var findings = await new ExternalLookupSampler().SampleAsync(profile, sourceTables, source, target, pageSize: 500, CancellationToken.None);
 
             Assert.Single(findings);
+        }
+
+        [Fact]
+        public async Task EntityFilter_ExcludesRecordFromSampling()
+        {
+            var missingId = Guid.NewGuid();
+            var recordWithIssue = new DataRecord("wit_detalle", Guid.NewGuid());
+            recordWithIssue.Attributes["primarycontactid"] = new DataReference("contact", missingId);
+            recordWithIssue.Attributes["tipo"] = "A";
+
+            var recordWithoutIssue = new DataRecord("wit_detalle", Guid.NewGuid());
+            recordWithoutIssue.Attributes["tipo"] = "B";
+
+            var sourceTables = new Dictionary<string, TableSummary>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["wit_detalle"] = new TableSummary
+                {
+                    LogicalName = "wit_detalle",
+                    Attributes = new List<AttributeSummary> { Lookup("primarycontactid", required: true, "contact") }
+                }
+            };
+
+            var profile = new MigrationProfile
+            {
+                Name = "Test",
+                Entities =
+                {
+                    new ProfileEntity
+                    {
+                        LogicalName = "wit_detalle",
+                        Filter = new RecordFilter
+                        {
+                            Conditions = { new FilterCondition { AttributeName = "tipo", Operator = FilterOperator.Equal, Value = "B" } }
+                        }
+                    }
+                }
+            };
+
+            var source = new FakeSourceService(new Dictionary<string, List<DataRecord>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["wit_detalle"] = new List<DataRecord> { recordWithIssue, recordWithoutIssue }
+            });
+            var target = new FakeTargetExistence(Array.Empty<Guid>());
+
+            var findings = await new ExternalLookupSampler().SampleAsync(profile, sourceTables, source, target, pageSize: 500, CancellationToken.None);
+
+            Assert.Empty(findings);
         }
     }
 }

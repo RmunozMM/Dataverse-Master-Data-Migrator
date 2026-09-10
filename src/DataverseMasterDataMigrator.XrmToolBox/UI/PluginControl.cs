@@ -88,7 +88,7 @@ namespace DataverseMasterDataMigrator.XrmToolBox.UI
         private RadioButton _filterAll, _filterCustom, _filterStandard, _filterSelected;
         private System.Windows.Forms.Label _selectedCountLabel;
 
-        private Button _btnPreflight, _btnPreviewData, _btnCompareStructure, _btnExecute, _btnCancel, _btnRetryFailed, _btnViewLog;
+        private Button _btnPreflight, _btnPreviewData, _btnCompareStructure, _btnExecute, _btnCancel, _btnRetryFailed, _btnViewLog, _btnClearLog;
         private TextBox _logBox;
         private PreflightResult _lastPreflight;
 
@@ -878,10 +878,13 @@ namespace DataverseMasterDataMigrator.XrmToolBox.UI
                     token.ThrowIfCancellationRequested();
 
                     var plan = MigrationPlanner.CreatePlan(_currentProfile, sourceTables);
+                    var entityFilters = _currentProfile.Entities
+                        .Where(pe => pe.Enabled)
+                        .ToDictionary(pe => pe.LogicalName, pe => pe.Filter, StringComparer.OrdinalIgnoreCase);
 
                     args.Result = new MigrationPreviewBuilder()
                         .BuildAsync(plan, sourceTables, _sourceRecords, _targetRecords, pageSize: 1000, maxRecordsPerTable: 2000, token,
-                            msg => SetWorkingMessage(msg))
+                            msg => SetWorkingMessage(msg), entityFilters)
                         .GetAwaiter().GetResult();
                 },
                 PostWorkCallBack = args =>
@@ -1194,6 +1197,11 @@ namespace DataverseMasterDataMigrator.XrmToolBox.UI
             _logBox.Focus();
             _logBox.SelectionStart = _logBox.Text.Length;
             _logBox.ScrollToCaret();
+        }
+
+        private void OnClearLog(object sender, EventArgs e)
+        {
+            _logBox.Clear();
         }
 
         /// <summary>

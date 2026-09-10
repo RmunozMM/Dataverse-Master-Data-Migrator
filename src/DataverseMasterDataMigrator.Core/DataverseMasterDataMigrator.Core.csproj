@@ -140,6 +140,7 @@
     <Compile Include="Models\DataRecord.cs" />
     <Compile Include="Models\MetadataSummaries.cs" />
     <Compile Include="Models\MigrationProfile.cs" />
+    <Compile Include="Models\RecordFilter.cs" />
     <Compile Include="Models\ExecutionManifest.cs" />
     <Compile Include="Profiles\MigrationProfileSerializer.cs" />
     <Compile Include="Profiles\MigrationProfileRepository.cs" />

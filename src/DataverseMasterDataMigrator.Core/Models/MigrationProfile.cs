@@ -41,7 +41,7 @@ namespace DataverseMasterDataMigrator.Core.Models
         public string DisplayName { get; set; }
         public bool Enabled { get; set; } = true;
         public int PreferredOrder { get; set; }
-        public string Filter { get; set; }
+        public RecordFilter Filter { get; set; }
         public AttributeSelectionMode AttributeMode { get; set; } = AttributeSelectionMode.AllWritable;
         public List<string> ExcludedAttributes { get; set; } = new List<string>();
     }

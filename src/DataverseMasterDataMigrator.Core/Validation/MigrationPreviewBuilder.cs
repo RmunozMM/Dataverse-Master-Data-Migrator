@@ -73,7 +73,8 @@ namespace DataverseMasterDataMigrator.Core.Validation
             int pageSize,
             int maxRecordsPerTable,
             CancellationToken cancellationToken,
-            Action<string> onProgress = null)
+            Action<string> onProgress = null,
+            IReadOnlyDictionary<string, RecordFilter> entityFilters = null)
         {
             if (plan == null) throw new ArgumentNullException(nameof(plan));
             if (sourceTables == null) throw new ArgumentNullException(nameof(sourceTables));
@@ -91,13 +92,16 @@ namespace DataverseMasterDataMigrator.Core.Validation
                 var nameAttribute = table?.PrimaryNameAttribute;
                 var columns = nameAttribute != null ? new[] { nameAttribute } : Array.Empty<string>();
 
+                RecordFilter filter = null;
+                entityFilters?.TryGetValue(step.LogicalName, out filter);
+
                 var allRecords = new List<DataRecord>();
                 string pageToken = null;
                 do
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var page = await sourceRecords
-                        .RetrievePageAsync(step.LogicalName, columns, pageToken, pageSize, cancellationToken)
+                        .RetrieveFilteredPageAsync(step.LogicalName, columns, filter, pageToken, pageSize, cancellationToken)
                         .ConfigureAwait(false);
                     pageToken = page.HasMore ? page.NextPageToken : null;
                     allRecords.AddRange(page.Records);

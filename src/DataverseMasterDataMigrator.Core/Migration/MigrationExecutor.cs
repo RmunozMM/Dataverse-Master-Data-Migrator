@@ -407,7 +407,7 @@ namespace DataverseMasterDataMigrator.Core.Migration
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var page = await request.SourceRecords
-                    .RetrievePageAsync(step.LogicalName, columns, pageToken, request.PageSize, cancellationToken)
+                    .RetrieveFilteredPageAsync(step.LogicalName, columns, entityConfig.Filter, pageToken, request.PageSize, cancellationToken)
                     .ConfigureAwait(false);
                 pageToken = page.HasMore ? page.NextPageToken : null;
 

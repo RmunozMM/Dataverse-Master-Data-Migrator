@@ -44,6 +44,17 @@ namespace DataverseMasterDataMigrator.XrmToolBox.Services
             int pageSize,
             CancellationToken cancellationToken)
         {
+            return RetrieveFilteredPageAsync(logicalName, columns, null, pageToken, pageSize, cancellationToken);
+        }
+
+        public Task<RecordPage> RetrieveFilteredPageAsync(
+            string logicalName,
+            IReadOnlyList<string> columns,
+            RecordFilter filter,
+            string pageToken,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
             cancellationToken.ThrowIfCancellationRequested();
 
             var effectivePageSize = pageSize > 0 ? pageSize : DefaultPageSize;
@@ -57,6 +68,11 @@ namespace DataverseMasterDataMigrator.XrmToolBox.Services
                     PagingCookie = null
                 }
             };
+
+            if (filter != null && ((filter.Conditions?.Count ?? 0) > 0 || (filter.SubFilters?.Count ?? 0) > 0))
+            {
+                query.Criteria = BuildFilterExpression(filter);
+            }
 
             // PagingInfo needs both PageNumber and the raw cookie once we're past page 1; the
             // "pageToken" this method receives/returns is that cookie serialized as-is.
@@ -86,6 +102,38 @@ namespace DataverseMasterDataMigrator.XrmToolBox.Services
                 HasMore = result.MoreRecords,
                 NextPageToken = nextToken
             });
+        }
+
+        private static FilterExpression BuildFilterExpression(RecordFilter filter)
+        {
+            var expression = new FilterExpression(
+                filter.LogicalOperator == FilterLogicalOperator.Or ? LogicalOperator.Or : LogicalOperator.And);
+
+            foreach (var condition in filter.Conditions ?? new List<FilterCondition>())
+            {
+                if (condition.Operator == FilterOperator.In)
+                {
+                    // A string implements IEnumerable<char> — must be excluded here, or an
+                    // In-filter with a single string value would get shredded into characters
+                    // instead of being treated as one candidate value.
+                    var values = (condition.Value is string || !(condition.Value is System.Collections.IEnumerable enumerable))
+                        ? new[] { condition.Value }
+                        : enumerable.Cast<object>().ToArray();
+                    expression.AddCondition(new ConditionExpression(condition.AttributeName, ConditionOperator.In, values));
+                }
+                else
+                {
+                    var op = condition.Operator == FilterOperator.NotEqual ? ConditionOperator.NotEqual : ConditionOperator.Equal;
+                    expression.AddCondition(new ConditionExpression(condition.AttributeName, op, condition.Value));
+                }
+            }
+
+            foreach (var subFilter in filter.SubFilters ?? new List<RecordFilter>())
+            {
+                expression.AddFilter(BuildFilterExpression(subFilter));
+            }
+
+            return expression;
         }
 
         public Task<IReadOnlyList<DataRecord>> RetrieveByIdsAsync(

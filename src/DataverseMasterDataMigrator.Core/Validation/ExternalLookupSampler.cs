@@ -78,7 +78,7 @@ namespace DataverseMasterDataMigrator.Core.Validation
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var page = await sourceRecords
-                        .RetrievePageAsync(entity.LogicalName, columns, pageToken, pageSize, cancellationToken)
+                        .RetrieveFilteredPageAsync(entity.LogicalName, columns, entity.Filter, pageToken, pageSize, cancellationToken)
                         .ConfigureAwait(false);
                     pageToken = page.HasMore ? page.NextPageToken : null;
 

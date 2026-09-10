@@ -21,7 +21,7 @@ namespace DataverseMasterDataMigrator.XrmToolBox.UI
             MinimizeBox = false;
             ShowIcon = false;
             ShowInTaskbar = false;
-            ClientSize = new Size(560, 380);
+            ClientSize = new Size(560, 400);
 
             var version = Assembly.GetExecutingAssembly().GetName().Version;
 
@@ -34,14 +34,47 @@ namespace DataverseMasterDataMigrator.XrmToolBox.UI
                 AutoSize = true,
                 Location = new Point(20, 18)
             });
-            header.Controls.Add(new Label
+            var versionRow = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Location = new Point(20, 55),
+                BackColor = Color.Transparent
+            };
+            versionRow.Controls.Add(new Label
             {
                 Text = $"Version {version}",
                 ForeColor = Color.Silver,
                 Font = new Font(FontFamily.GenericSansSerif, 9),
                 AutoSize = true,
-                Location = new Point(20, 55)
+                Margin = new Padding(0)
             });
+            versionRow.Controls.Add(new Label
+            {
+                Text = " | ",
+                ForeColor = Color.Silver,
+                Font = new Font(FontFamily.GenericSansSerif, 9),
+                AutoSize = true,
+                Margin = new Padding(0)
+            });
+            var repoLink = new LinkLabel
+            {
+                Text = "Enlace al repositorio",
+                LinkColor = Color.Silver,
+                ActiveLinkColor = Color.White,
+                VisitedLinkColor = Color.Silver,
+                Font = new Font(FontFamily.GenericSansSerif, 9),
+                AutoSize = true,
+                Margin = new Padding(0),
+                BackColor = Color.Transparent
+            };
+            repoLink.LinkClicked += (s, e) =>
+            {
+                try { Process.Start("https://github.com/RmunozMM/Dataverse-Master-Data-Migrator"); }
+                catch { /* no default handler registered for this link type — nothing sensible to do about it here */ }
+            };
+            versionRow.Controls.Add(repoLink);
+            header.Controls.Add(versionRow);
 
             var body = new TableLayoutPanel
             {
@@ -60,35 +93,37 @@ namespace DataverseMasterDataMigrator.XrmToolBox.UI
 
             body.Controls.Add(new Label
             {
-                Text = "Migrate master data between Dataverse environments using reusable, " +
-                       "persistent migration profiles instead of manual table-by-table transfers.",
+                Text = "Migra datos maestros entre ambientes de Microsoft Dataverse / Dynamics 365 usando perfiles " +
+                       "reutilizables: valida dependencias y lookups (Preflight), compara la estructura Source/Target, " +
+                       "previsualiza los cambios y ejecuta la migración multipass con reintento de fallos — en vez de " +
+                       "migraciones manuales tabla por tabla.",
                 AutoSize = false,
                 Dock = DockStyle.Top,
-                Height = 45,
+                Height = 66,
                 Margin = new Padding(0, 0, 0, 10)
             });
 
-            body.Controls.Add(new Label { Text = "Developer: Rogelio Muñoz", AutoSize = true, Dock = DockStyle.Top });
             body.Controls.Add(new Label
             {
-                Text = $"Copyright © Rogelio Muñoz {DateTime.Now.Year}. All rights reserved.",
+                Text = "Desarrollador: Rogelio Muñoz",
+                Font = new Font(FontFamily.GenericSansSerif, 8.25f, FontStyle.Bold),
+                AutoSize = true,
+                Dock = DockStyle.Top
+            });
+            body.Controls.Add(new Label
+            {
+                Text = $"Copyright © {DateTime.Now.Year} Rogelio Muñoz. Todos los derechos reservados.",
+                Font = new Font(FontFamily.GenericSansSerif, 8.25f, FontStyle.Bold),
                 AutoSize = true,
                 Dock = DockStyle.Top,
                 Margin = new Padding(0, 0, 0, 10)
             });
 
-            body.Controls.Add(MakeLinkRow("Website:", "www.rogeliomunoz.cl", "https://www.rogeliomunoz.cl"));
-            body.Controls.Add(MakeLinkRow("Contact:", "rmunoz1612@gmail.com", "mailto:rmunoz1612@gmail.com"));
-            body.Controls.Add(new Label
-            {
-                Text = "Repository: coming soon (will be published once this reaches an operational baseline)",
-                ForeColor = Color.Gray,
-                AutoSize = true,
-                Dock = DockStyle.Top,
-                Margin = new Padding(0, 0, 0, 0)
-            });
+            body.Controls.Add(MakeLinkRow("Sitio Web:", "www.rogeliomunoz.cl", "https://www.rogeliomunoz.cl"));
+            body.Controls.Add(MakeLinkRow("Contacto:", "rmunoz1612@gmail.com", "mailto:rmunoz1612@gmail.com"));
+            body.Controls.Add(MakeLinkRow("Repositorio:", "github.com/RmunozMM/Dataverse-Master-Data-Migrator", "https://github.com/RmunozMM/Dataverse-Master-Data-Migrator"));
 
-            var closeButton = new Button { Text = "Close", DialogResult = DialogResult.OK, Width = 90, Height = 30 };
+            var closeButton = new Button { Text = "Cerrar", DialogResult = DialogResult.OK, Width = 90, Height = 30 };
             closeButton.Location = new Point(ClientSize.Width - closeButton.Width - 20, ClientSize.Height - closeButton.Height - 15);
             closeButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
 

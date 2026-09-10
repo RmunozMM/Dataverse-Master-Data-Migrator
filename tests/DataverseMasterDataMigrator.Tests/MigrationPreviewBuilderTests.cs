@@ -26,9 +26,13 @@ namespace DataverseMasterDataMigrator.Tests
             }
 
             public Task<RecordPage> RetrievePageAsync(string logicalName, IReadOnlyList<string> columns, string pageToken, int pageSize, CancellationToken cancellationToken)
+                => RetrieveFilteredPageAsync(logicalName, columns, null, pageToken, pageSize, cancellationToken);
+
+            public Task<RecordPage> RetrieveFilteredPageAsync(string logicalName, IReadOnlyList<string> columns, RecordFilter filter, string pageToken, int pageSize, CancellationToken cancellationToken)
             {
                 _sourceRecords.TryGetValue(logicalName, out var records);
-                return Task.FromResult(new RecordPage { Records = records ?? new List<DataRecord>(), HasMore = false, NextPageToken = null });
+                var filtered = (records ?? new List<DataRecord>()).Where(r => MatchesFilter(r, filter)).ToList();
+                return Task.FromResult(new RecordPage { Records = filtered, HasMore = false, NextPageToken = null });
             }
 
             public Task<IReadOnlyList<DataRecord>> RetrieveByIdsAsync(string logicalName, IReadOnlyList<Guid> ids, IReadOnlyList<string> columns, CancellationToken cancellationToken)
@@ -43,6 +47,33 @@ namespace DataverseMasterDataMigrator.Tests
             public Task<int> GetApproximateCountAsync(string logicalName, CancellationToken cancellationToken) => Task.FromResult(0);
             public Task<IReadOnlyList<RecordOperationResult>> WriteBatchAsync(string logicalName, IReadOnlyList<DataRecord> batch, WriteStrategy strategy, int pass, CancellationToken cancellationToken) => throw new NotSupportedException();
             public Task AssociateAsync(string relationshipSchemaName, DataReference from, IReadOnlyList<DataReference> to, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+            private static bool MatchesFilter(DataRecord record, RecordFilter filter)
+            {
+                if (filter == null || ((filter.Conditions?.Count ?? 0) == 0 && (filter.SubFilters?.Count ?? 0) == 0))
+                    return true;
+
+                bool EvaluateCondition(FilterCondition c)
+                {
+                    record.Attributes.TryGetValue(c.AttributeName, out var actual);
+                    if (c.Operator == FilterOperator.In)
+                    {
+                        var values = (c.Value is string || !(c.Value is System.Collections.IEnumerable enumerable))
+                            ? new[] { c.Value }
+                            : enumerable.Cast<object>();
+                        return values.Any(v => Equals(actual, v));
+                    }
+                    var matches = Equals(actual, c.Value);
+                    return c.Operator == FilterOperator.NotEqual ? !matches : matches;
+                }
+
+                var results = (filter.Conditions ?? new List<FilterCondition>()).Select(EvaluateCondition)
+                    .Concat((filter.SubFilters ?? new List<RecordFilter>()).Select(sf => MatchesFilter(record, sf)))
+                    .ToList();
+
+                if (results.Count == 0) return true;
+                return filter.LogicalOperator == FilterLogicalOperator.Or ? results.Any(x => x) : results.All(x => x);
+            }
         }
 
         private static MigrationPlan SinglePlan(string logicalName) => new MigrationPlan
@@ -253,6 +284,40 @@ namespace DataverseMasterDataMigrator.Tests
             var result = await new MigrationPreviewBuilder().BuildAsync(SinglePlan("wit_tema"), sourceTables, source, target, pageSize: 500, maxRecordsPerTable: 100, CancellationToken.None);
 
             Assert.Single(result);
+        }
+
+        [Fact]
+        public async Task EntityFilters_OnlyIncludesMatchingRecords()
+        {
+            var matchingId = Guid.NewGuid();
+            var nonMatchingId = Guid.NewGuid();
+            var matching = new DataRecord("wit_tema", matchingId);
+            matching.Attributes["tipo"] = "A";
+            var nonMatching = new DataRecord("wit_tema", nonMatchingId);
+            nonMatching.Attributes["tipo"] = "B";
+
+            var source = new FakeService(new Dictionary<string, List<DataRecord>>
+            {
+                ["wit_tema"] = new List<DataRecord> { matching, nonMatching }
+            });
+            var target = new FakeService();
+            var sourceTables = new Dictionary<string, TableSummary> { ["wit_tema"] = new TableSummary { LogicalName = "wit_tema" } };
+            var entityFilters = new Dictionary<string, RecordFilter>
+            {
+                ["wit_tema"] = new RecordFilter
+                {
+                    Conditions = { new FilterCondition { AttributeName = "tipo", Operator = FilterOperator.Equal, Value = "A" } }
+                }
+            };
+
+            var result = await new MigrationPreviewBuilder().BuildAsync(
+                SinglePlan("wit_tema"), sourceTables, source, target, pageSize: 500, maxRecordsPerTable: 100, CancellationToken.None,
+                onProgress: null, entityFilters: entityFilters);
+
+            var summary = Assert.Single(result);
+            Assert.Equal(1, summary.SourceRecordCount);
+            Assert.Single(summary.Records);
+            Assert.Equal(matchingId, summary.Records.Single().Id);
         }
     }
 }

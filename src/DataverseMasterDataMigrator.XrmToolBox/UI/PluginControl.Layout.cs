@@ -327,9 +327,10 @@ namespace DataverseMasterDataMigrator.XrmToolBox.UI
             _btnCancel.Enabled = false;
             _btnRetryFailed = MakeButton("Retry Failed", OnRetryFailed);
             _btnViewLog = MakeButton("View Log", OnViewLog);
+            _btnClearLog = MakeButton("Clear Log", OnClearLog);
             _preflightStatusDot = new Panel { Size = new Size(14, 14), BackColor = Color.Silver, Margin = new Padding(24, 9, 4, 0) };
             _preflightStatusLabel = new Label { Text = "Sin analizar", AutoSize = true, Margin = new Padding(2, 11, 0, 0), ForeColor = Color.DimGray };
-            buttons.Controls.AddRange(new Control[] { _btnPreflight, _btnPreviewData, _btnCompareStructure, _btnExecute, _btnCancel, _btnRetryFailed, _btnViewLog, _preflightStatusDot, _preflightStatusLabel });
+            buttons.Controls.AddRange(new Control[] { _btnPreflight, _btnPreviewData, _btnCompareStructure, _btnExecute, _btnCancel, _btnRetryFailed, _btnViewLog, _btnClearLog, _preflightStatusDot, _preflightStatusLabel });
 
             _logBox = new TextBox
             {

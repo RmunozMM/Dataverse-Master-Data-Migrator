@@ -43,7 +43,8 @@ namespace DataverseMasterDataMigrator.Core.Abstractions
     /// <summary>
     /// Decide qué registros de una tabla entran en el alcance de la migración. En V1 siempre
     /// "todos" (ver <c>Filter == null</c> en el perfil). El plugin UMayor implementará aquí el
-    /// recorrido del grafo desde un Contact raíz.
+    /// recorrido del grafo desde un Contact raíz, usando <see cref="IDataverseRecordService.RetrieveFilteredPageAsync"/>
+    /// (con un <see cref="RecordFilter"/> por relación) como primitiva de lectura acotada.
     /// </summary>
     public interface IRecordSelector
     {
