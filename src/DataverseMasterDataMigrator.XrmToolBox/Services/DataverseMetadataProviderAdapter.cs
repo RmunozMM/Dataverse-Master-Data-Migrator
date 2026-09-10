@@ -177,6 +177,7 @@ namespace DataverseMasterDataMigrator.XrmToolBox.Services
                 Kind = kind,
                 IsValidForCreate = a.IsValidForCreate.GetValueOrDefault(false),
                 IsValidForUpdate = a.IsValidForUpdate.GetValueOrDefault(false),
+                IsValidForRead = a.IsValidForRead.GetValueOrDefault(true),
                 LookupTargets = lookupTargets,
                 RequiredLevel = a.RequiredLevel?.Value.ToString() ?? "None"
             };

@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.6.4] — Corregido: atributos válidos para escribir pero no para leer (`subscriptionid`)
+
+### Corregido (crash real reportado por el usuario, primera vez que Migrar corrió contra el tenant real)
+- **`Retrieve can only return columns that are valid for read. Column: subscriptionid. Entity: contact`**
+  al correr Migrar por primera vez de verdad. Causa: `subscriptionid` (usado por la
+  sincronización offline/Outlook) reporta `IsValidForCreate`/`IsValidForUpdate = true` en la
+  metadata real, pero `IsValidForRead = false` — una combinación real que
+  `AttributeWritabilityRules.GetWritableAttributes` (la única fuente de verdad de "qué atributo
+  se escribe", usada tanto por Pass 1 de `MigrationExecutor` como por Preflight) nunca chequeaba:
+  solo filtraba por Create/Update, nunca por Read. El atributo terminaba en la lista de columnas
+  a pedirle a Source, y Dataverse rechaza ese `Retrieve` de plano — tumbando la tabla completa
+  antes de escribir un solo registro.
+- **Fix**: nuevo campo `AttributeSummary.IsValidForRead` (default `true`, no rompe nada
+  existente), poblado desde la metadata real (`AttributeMetadata.IsValidForRead`) en
+  `DataverseMetadataProviderAdapter`, y agregado como filtro explícito en
+  `AttributeWritabilityRules.GetWritableAttributes` y en `ExternalLookupSampler` (mismo
+  razonamiento: no tiene sentido "samplear" para Preflight un valor que tampoco se puede leer).
+  2 tests nuevos (`AttributeWritabilityRulesTests.cs`) prueban el caso real y confirman que el
+  default no cambia el comportamiento de ningún atributo/test existente.
+- Umayor Test Data Seeder tiene su propia copia vendored de `DataverseMetadataProviderAdapter.cs`
+  (mismo patrón ya visto en 0.6.3 con `DataverseRecordServiceAdapter.cs`) — corregida también,
+  por separado, no asumida cubierta por este fix.
+
+### Interno
+- `AssemblyVersion`/`AssemblyFileVersion` (plugin XrmToolBox): `0.6.3.0` → `0.6.4.0`. Core sube a
+  `0.2.2.0` (esta vez sí cambió contenido real de Core: `MetadataSummaries.cs` y
+  `AttributeWritabilityRules.cs`).
+
 ## [0.6.3] — Corregido: `RetrieveByIdsAsync` asumía mal la primary key de tablas tipo Activity
 
 ### Corregido (crash real reportado por el usuario contra su tenant real)

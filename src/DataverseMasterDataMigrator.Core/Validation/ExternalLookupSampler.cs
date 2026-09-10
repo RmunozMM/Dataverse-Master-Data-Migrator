@@ -55,6 +55,10 @@ namespace DataverseMasterDataMigrator.Core.Validation
                     // touched (real feedback: this confused a user testing against a profile
                     // where every such warning turned out to be one of these fields).
                     .Where(a => a.IsValidForCreate || a.IsValidForUpdate)
+                    // Same reasoning as AttributeWritabilityRules.GetWritableAttributes: an
+                    // attribute that Dataverse won't even let us READ can't be sampled at all —
+                    // requesting it in a ColumnSet is rejected outright.
+                    .Where(a => a.IsValidForRead)
                     // ownerid (and any equivalent Owner-type lookup) IS writable, unlike
                     // createdby/modifiedby, but the executor still excludes it (IsOwnerLookup) —
                     // a Source user/team GUID essentially never exists in Target. Without this,

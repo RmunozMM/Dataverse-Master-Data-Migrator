@@ -22,6 +22,17 @@ namespace DataverseMasterDataMigrator.Core.Models
         public bool IsValidForUpdate { get; set; }
 
         /// <summary>
+        /// Reportado por la metadata real — algunos atributos de sistema (p. ej. <c>subscriptionid</c>,
+        /// usado por la sincronización offline/Outlook) pueden aparecer válidos para create/update
+        /// pero NO para lectura: Dataverse rechaza de plano cualquier <c>Retrieve</c>/<c>RetrieveMultiple</c>
+        /// que los pida en el <c>ColumnSet</c> ("Retrieve can only return columns that are valid
+        /// for read"). Bug real encontrado en vivo: nunca se chequeaba este flag por separado,
+        /// solo Create/Update — un atributo así terminaba en la lista de columnas a leer de
+        /// Source y tumbaba la migración entera antes de escribir un solo registro.
+        /// </summary>
+        public bool IsValidForRead { get; set; } = true;
+
+        /// <summary>
         /// Tablas de destino posibles cuando <see cref="Kind"/> es <see cref="AttributeKind.Lookup"/>.
         /// Un lookup polimórfico (customer, owner) puede apuntar a más de una tabla.
         /// </summary>

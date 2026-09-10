@@ -22,6 +22,10 @@ namespace DataverseMasterDataMigrator.Core.Migration
                 .Where(a => a.Kind != AttributeKind.Virtual)
                 .Where(a => !a.IsOwnerLookup)
                 .Where(a => a.IsValidForCreate || a.IsValidForUpdate)
+                // No tiene sentido intentar migrar un valor que ni siquiera se puede LEER de
+                // Source (p. ej. subscriptionid) — y Dataverse lo rechaza de plano si aparece en
+                // el ColumnSet de un Retrieve, tumbando la tabla entera antes de escribir nada.
+                .Where(a => a.IsValidForRead)
                 .Where(a => !excluded.Contains(a.LogicalName))
                 .Where(a => restoreState || a.Kind != AttributeKind.StateStatus)
                 .ToList();
