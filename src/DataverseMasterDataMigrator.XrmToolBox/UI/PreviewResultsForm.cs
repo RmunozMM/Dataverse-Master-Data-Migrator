@@ -154,14 +154,14 @@ namespace DataverseMasterDataMigrator.XrmToolBox.UI
             // (SplitContainer, not a percent-column TableLayoutPanel, so the divider is also
             // draggable — one step closer to an actual FTP client's dual-pane feel).
             _sourceGrid = BuildGrid(includeCheckbox: true);
-            _sourceGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Id", HeaderText = "Id", DataPropertyName = "Id", Width = 220, ReadOnly = true });
-            _sourceGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "SourceName", HeaderText = "Name", DataPropertyName = "SourceName", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true });
-            _sourceGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "State", HeaderText = "Status", DataPropertyName = "State", Width = 90, ReadOnly = true });
+            _sourceGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Id", HeaderText = "GUID", DataPropertyName = "Id", Width = 220, ReadOnly = true });
+            _sourceGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "SourceName", HeaderText = "VALUE", DataPropertyName = "SourceName", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true });
+            _sourceGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "State", HeaderText = "ACTION", DataPropertyName = "State", Width = 90, ReadOnly = true });
 
             _targetGrid = BuildGrid(includeCheckbox: false);
-            _targetGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Id", HeaderText = "Id", DataPropertyName = "Id", Width = 220, ReadOnly = true });
-            _targetGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "TargetName", HeaderText = "Name", DataPropertyName = "TargetName", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true });
-            _targetGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "State", HeaderText = "Status", DataPropertyName = "State", Width = 90, ReadOnly = true });
+            _targetGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Id", HeaderText = "GUID", DataPropertyName = "Id", Width = 220, ReadOnly = true });
+            _targetGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "TargetName", HeaderText = "VALUE", DataPropertyName = "TargetName", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true });
+            _targetGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "State", HeaderText = "ACTION", DataPropertyName = "State", Width = 90, ReadOnly = true });
 
             WireRowColoring(_sourceGrid);
             WireRowColoring(_targetGrid);
@@ -272,10 +272,16 @@ namespace DataverseMasterDataMigrator.XrmToolBox.UI
                 AllowUserToDeleteRows = false,
                 AllowUserToResizeRows = false,
                 RowHeadersVisible = false,
+                ColumnHeadersVisible = true,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+                ColumnHeadersHeight = 26,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 BackgroundColor = Color.White,
                 MinimumSize = new Size(0, 200)
             };
+            grid.EnableHeadersVisualStyles = false;
+            grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(230, 230, 230);
+            grid.ColumnHeadersDefaultCellStyle.Font = new Font(FontFamily.GenericSansSerif, 9, FontStyle.Bold);
             if (includeCheckbox)
                 grid.Columns.Add(new DataGridViewCheckBoxColumn { Name = "Included", HeaderText = "", DataPropertyName = "Included", Width = 36 });
             return grid;

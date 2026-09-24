@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.8] — Corregido: encabezados de columna en Preview Data
+
+### Corregido
+- La grilla de `Preview Data` (`PreviewResultsForm`) no mostraba encabezados de columna
+  visibles — el usuario reportó ver los datos (GUID, valor, acción) sin ninguna fila de título
+  arriba. Se agregó estilo explícito al encabezado (`EnableHeadersVisualStyles = false` +
+  color/negrita propios, ya que sin esto el tema visual del sistema puede pintarlo casi
+  invisible sobre fondo blanco) y se renombraron las columnas a **GUID / VALUE / ACTION** (antes
+  "Id" / "Name" / "Status") en ambos paneles (Source y Target).
+
 ## [0.6.7] — Agregado: `DeleteBatchAsync` (mecanismo del Core, sin uso en el migrador genérico)
 
 ### Agregado
