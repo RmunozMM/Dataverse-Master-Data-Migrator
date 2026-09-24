@@ -243,22 +243,40 @@ namespace DataverseMasterDataMigrator.XrmToolBox.UI
             CancelButton = cancelButton;
         }
 
-        /// <summary>A header label (Dock.Top, added first) over a grid (Dock.Fill, added second) —
-        /// the header reliably claims a thin strip and the grid fills everything else beneath it.</summary>
+        /// <summary>
+        /// A header label over a grid. Real bug found live (measured with the non-visible
+        /// <c>form.Handle</c> technique, never by opening a real window — see the class doc
+        /// comment): a plain <see cref="Panel"/> with the label docked Top and the grid docked
+        /// Fill did NOT reliably push the grid below the label — the grid's own
+        /// <c>Bounds</c> measured <c>Y=0</c>, the SAME origin as the label, so the grid's column
+        /// header row (its first ~26px) rendered directly underneath the opaque label and was
+        /// completely hidden — only the data rows further down stayed visible, which is exactly
+        /// what real feedback described ("no veo ningún encabezado"). Same root cause already
+        /// fixed once for the outer `root` layout in this file (see its own doc comment): Dock.Top
+        /// + Dock.Fill inside a plain Panel is not a reliable pairing. Fixed the same way — an
+        /// explicit 2-row TableLayoutPanel (AutoSize header row, Percent(100) grid row) leaves no
+        /// Z-order/add-order ambiguity for the layout engine to get wrong.
+        /// </summary>
         private static Panel BuildPane(string title, DataGridView grid)
         {
-            var panel = new Panel { Dock = DockStyle.Fill };
             var header = new Label
             {
                 Text = title,
                 Font = new Font(FontFamily.GenericSansSerif, 10, FontStyle.Bold),
                 AutoSize = false,
                 Height = 24,
-                Dock = DockStyle.Top,
+                Dock = DockStyle.Fill,
                 Padding = new Padding(4, 4, 0, 0)
             };
-            panel.Controls.Add(header);
-            panel.Controls.Add(grid);
+
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            layout.Controls.Add(header, 0, 0);
+            layout.Controls.Add(grid, 0, 1);
+
+            var panel = new Panel { Dock = DockStyle.Fill };
+            panel.Controls.Add(layout);
             return panel;
         }
 

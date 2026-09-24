@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.9] — Corregido de verdad: encabezados de columna en Preview Data (causa raíz real)
+
+### Corregido
+- La 0.6.8 solo estilizó el encabezado — el problema real era que `BuildPane` posicionaba la
+  etiqueta "SOURCE"/"TARGET" (`Dock.Top`) y la grilla (`Dock.Fill`) dentro de un `Panel` simple:
+  medido con la técnica de `form.Handle` sin `Show()` (nunca una ventana real visible), la grilla
+  arrancaba en `Y=0`, el mismo origen que la etiqueta, en vez de quedar debajo — su propia fila
+  de encabezado (26px) quedaba tapada detrás de la etiqueta opaca. Mismo defecto de fondo que ya
+  se había corregido una vez para el layout general (`root`) de este mismo diálogo, pero
+  `BuildPane` se había quedado con el patrón viejo. Reemplazado por un `TableLayoutPanel`
+  explícito de 2 filas (etiqueta AutoSize, grilla Percent 100) — confirmado sin superposición
+  (la grilla ahora arranca 3px debajo de la etiqueta).
+
 ## [0.6.8] — Corregido: encabezados de columna en Preview Data
 
 ### Corregido
