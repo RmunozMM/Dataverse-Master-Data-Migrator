@@ -5,7 +5,7 @@ Dynamics 365 usando perfiles reutilizables y persistentes, en vez de migraciones
 por tabla.
 
 - **Autor:** Rogelio Muñoz — [www.rogeliomunoz.cl](http://www.rogeliomunoz.cl)
-- **Versión actual:** 0.5.1.0
+- **Versión actual:** 0.6.7.0
 - **Plataforma:** .NET Framework 4.8, WinForms
 - **Todos los derechos reservados.** El código está publicado para consulta y para descargar el
   instalador; no se autoriza su reutilización ni redistribución sin permiso del autor.
